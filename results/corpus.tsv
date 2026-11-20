@@ -1,5 +1,5 @@
 test	expect	lean	clean	sorry	skipped	verdict
-ackermann_lower_bound	pos	1	5	2	0	fail
+ackermann_lower_bound	pos	0	7	0	0	pass
 add_comm	pos	0	5	0	0	pass
 bool_algebra	pos	0	5	0	0	pass
 cong_lambda_argument	pos	0	8	0	0	pass
@@ -21,7 +21,7 @@ from_to_injective	pos	0	11	0	0	pass
 function_congruence	pos	0	1	0	0	pass
 gadt_refutation	pos	0	7	0	0	pass
 generic_constructor_dependent_function	pos	0	1	0	0	pass
-generic_constructor_erased_lambda	pos	1	0	1	0	fail
+generic_constructor_erased_lambda	pos	0	1	0	0	pass
 goal_ladder_state_000	neg	1	6	1	0	pass
 goal_ladder_state_001	neg	1	6	1	0	pass
 goal_ladder_state_002	neg	1	6	1	0	pass
@@ -45,9 +45,9 @@ goal_ladder_state_019	neg	1	3	1	0	pass
 goal_ladder_state_020	neg	1	3	1	0	pass
 goal_ladder_state_021	neg	1	3	1	0	pass
 goal_ladder_state_022	neg	1	3	1	0	pass
-goal_ladder_state_023	neg	1	5	2	0	pass
-goal_ladder_state_024	neg	1	5	2	0	pass
-goal_ladder_state_025	neg	1	5	2	0	pass
+goal_ladder_state_023	neg	1	6	1	0	pass
+goal_ladder_state_024	neg	1	6	1	0	pass
+goal_ladder_state_025	neg	1	6	1	0	pass
 goal_ladder_state_026	neg	1	2	1	0	pass
 goal_ladder_state_027	neg	1	14	2	0	pass
 goal_ladder_state_028	neg	1	2	1	0	pass
@@ -62,7 +62,7 @@ group_returned_zero	pos	0	4	0	0	pass
 half_shift_hom	pos	0	3	0	0	pass
 halving_dec_switch	pos	0	3	0	0	pass
 hypothetical_equality	pos	0	2	0	0	pass
-insertion_sort_sorted	pos	1	4	12	0	fail
+insertion_sort_sorted	pos	0	16	0	0	pass
 lam_copy_eta	pos	0	6	0	0	pass
 LAWS	neg	0	1	0	1	partial
 length_append	pos	0	5	0	0	pass
@@ -73,15 +73,15 @@ match_as_binding	neg	-	-	-	-	translate-fail
 mirror_involution	pos	0	3	0	0	pass
 model_false	pos	0	1	0	0	pass
 model_lambdas	pos	0	1	0	0	pass
-model_no_base	pos	1	0	1	0	fail
+model_no_base	pos	0	1	0	0	pass
 model_order	pos	0	5	0	0	pass
-model_search	pos	1	3	2	0	fail
+model_search	pos	0	5	0	0	pass
 monad_laws	pos	0	6	0	0	pass
 mul_comm	pos	0	8	0	0	pass
 multi_column_match	pos	0	3	0	0	pass
 nat_commutativity	pos	0	5	0	0	pass
 nat_le_trans	pos	0	12	0	0	pass
-nat_literal_unfolds	pos	1	8	1	0	fail
+nat_literal_unfolds	pos	0	10	0	0	pass
 nested_exists	pos	0	2	0	0	pass
 no_funext_000	neg	1	3	1	0	pass
 parity_double_wrap	pos	0	3	0	0	pass

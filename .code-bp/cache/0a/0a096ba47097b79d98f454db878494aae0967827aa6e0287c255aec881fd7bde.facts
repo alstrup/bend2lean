@@ -1,13 +1,13 @@
 # code-bp facts v1
 # file: README.md
-# content_hash: blake3:c8cfb5cce34141bd4a6581dcca25f1d6bbed8853d3cabb79df3518ba35ff7089
+# content_hash: blake3:047d100cd3c79f1cbc649bb08611916457ca3d2b7b3ae8f5d5f26a6c02873a30
 # lang: markdown
-# vocab: bend lean file array definitions list axioms bendlang laws proof results taylor translate 0e2f38f7 base bench bend2lean chain computes core corpus empty https indexed match proofs runs scripts shift step
+# vocab: bend lean tests file proof array definitions laws list type bendlang code negative proofs taylor translates types 0e2f38f7 accepts axioms base bench bend2lean chain computes constructors core corpus empty equality
 # n_facts: 7
-i	https://bun.sh	62
+i	https://bun.sh	75
 i	https://github.com/bendlang/bend	3
-s	Coverage on Bend's own proof tests	2	52
+s	Coverage on Bend's own proof tests	2	56
 s	How the translation works	2	36
-s	Requirements	2	60
+s	Requirements	2	73
 s	Worked example: a fast Taylor shift, proved in Bend, checked in Lean	2	11
 s	bend2lean	1	1

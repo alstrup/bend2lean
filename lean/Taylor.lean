@@ -34,23 +34,23 @@ inductive «Cmp»  : Type where
 inductive «U32»  : Type where
   | «U32»  : ((data_0 : (BWord (32 : Nat))) → «U32»)
 
-inductive «Array» (T_0 : Type) : Type where
+inductive «Array» (T_0 : Type u) : Type u where
   | «ALeaf»  : ((value_1 : T_0) → («Array» T_0))
   | «ANode»  : ((xs_1 : («Array» T_0)) → ((ys_2 : («Array» T_0)) → («Array» T_0)))
 
-def «Pair.fst» : ((A_0 : Type) → ((B_1 : Type) → ((p_2 : ((_ : A_0) × B_1)) → A_0))) :=
+def «Pair.fst» : ((A_0 : Type _) → ((B_1 : Type _) → ((p_2 : ((_ : A_0) × B_1)) → A_0))) :=
   (fun A_0 => (fun B_1 => (fun m_1000 => match m_1000 with | ⟨a_2, b_3⟩ => a_2)))
 
-def «Pair.snd» : ((A_0 : Type) → ((B_1 : Type) → ((p_2 : ((_ : A_0) × B_1)) → B_1))) :=
+def «Pair.snd» : ((A_0 : Type _) → ((B_1 : Type _) → ((p_2 : ((_ : A_0) × B_1)) → B_1))) :=
   (fun A_0 => (fun B_1 => (fun m_1001 => match m_1001 with | ⟨a_2, b_3⟩ => b_3)))
 
-def «Equal.cong» : ((A_0 : Type) → ((B_1 : Type) → ((f_2 : ((x_2 : A_0) → B_1)) → ((a_3 : A_0) → ((b_4 : A_0) → ((e_5 : (@Beq A_0 a_3 b_4)) → (@Beq B_1 (f_2 a_3) (f_2 b_4)))))))) :=
+def «Equal.cong» : ((A_0 : Type _) → ((B_1 : Type _) → ((f_2 : ((x_2 : A_0) → B_1)) → ((a_3 : A_0) → ((b_4 : A_0) → ((e_5 : (@Beq A_0 a_3 b_4)) → (@Beq B_1 (f_2 a_3) (f_2 b_4)))))))) :=
   (fun A_0 => (fun B_1 => (fun f_2 => (fun a_3 => (fun b_4 => (fun e_5 => (Beq.J (fun x_6 x_7 => (@Beq B_1 (f_2 a_3) (f_2 x_6))) e_5 Beq.refl)))))))
 
-def «Equal.sym» : ((A_0 : Type) → ((a_1 : A_0) → ((b_2 : A_0) → ((e_3 : (@Beq A_0 a_1 b_2)) → (@Beq A_0 b_2 a_1))))) :=
+def «Equal.sym» : ((A_0 : Type _) → ((a_1 : A_0) → ((b_2 : A_0) → ((e_3 : (@Beq A_0 a_1 b_2)) → (@Beq A_0 b_2 a_1))))) :=
   (fun A_0 => (fun a_1 => (fun b_2 => (fun e_3 => (Beq.J (fun x_4 x_5 => (@Beq A_0 x_4 a_1)) e_3 Beq.refl)))))
 
-def «Equal.trans» : ((A_0 : Type) → ((a_1 : A_0) → ((b_2 : A_0) → ((c_3 : A_0) → ((ab_4 : (@Beq A_0 a_1 b_2)) → ((bc_5 : (@Beq A_0 b_2 c_3)) → (@Beq A_0 a_1 c_3))))))) :=
+def «Equal.trans» : ((A_0 : Type _) → ((a_1 : A_0) → ((b_2 : A_0) → ((c_3 : A_0) → ((ab_4 : (@Beq A_0 a_1 b_2)) → ((bc_5 : (@Beq A_0 b_2 c_3)) → (@Beq A_0 a_1 c_3))))))) :=
   (fun A_0 => (fun a_1 => (fun b_2 => (fun c_3 => (fun ab_4 => (fun bc_5 => (Beq.J (fun x_6 x_7 => (@Beq A_0 a_1 x_6)) bc_5 ab_4)))))))
 
 def «Bool.not» : ((b_0 : Bool) → Bool) :=
@@ -167,55 +167,55 @@ def «U32.to_nat» : ((a_0 : «U32») → Nat) :=
 def «U32.from_nat» : ((n_0 : Nat) → «U32») :=
   (fun m_1060 => match m_1060 with | Nat.zero => («U32».«U32» (bwordOf 32 0)) | Nat.succ p_0 => («U32.inc» («U32.from_nat» p_0)))
 
-def «Array.size.node» : ((T_0 : Type) → ((ys_1 : («Array» T_0)) → ((r_2 : ((_ : («Array» T_0)) × «U32»)) → ((_ : («Array» T_0)) × «U32»)))) :=
+def «Array.size.node» : ((T_0 : Type _) → ((ys_1 : («Array» T_0)) → ((r_2 : ((_ : («Array» T_0)) × «U32»)) → ((_ : («Array» T_0)) × «U32»)))) :=
   (fun T_0 => (fun ys_1 => (fun m_1061 => match m_1061 with | ⟨xs2_2, n_3⟩ => ⟨(«Array».«ANode» xs2_2 ys_1), («U32.shl» n_3)⟩)))
 
-def «Array.size» : ((T_0 : Type) → ((a_1 : («Array» T_0)) → ((_ : («Array» T_0)) × «U32»))) :=
+def «Array.size» : ((T_0 : Type _) → ((a_1 : («Array» T_0)) → ((_ : («Array» T_0)) × «U32»))) :=
   (fun T_0 => (fun m_1062 => match m_1062 with | «Array».«ALeaf» x_1 => ⟨(«Array».«ALeaf» x_1), («U32».«U32» (bwordOf 32 1))⟩ | «Array».«ANode» xs_1 ys_2 => («Array.size.node» T_0 ys_2 («Array.size» T_0 xs_1))))
 
-def «Array.swap.lo» : ((T_0 : Type) → ((ys_1 : («Array» T_0)) → ((r_2 : ((_ : («Array» T_0)) × T_0)) → ((_ : («Array» T_0)) × T_0)))) :=
+def «Array.swap.lo» : ((T_0 : Type _) → ((ys_1 : («Array» T_0)) → ((r_2 : ((_ : («Array» T_0)) × T_0)) → ((_ : («Array» T_0)) × T_0)))) :=
   (fun T_0 => (fun ys_1 => (fun m_1063 => match m_1063 with | ⟨nxs_2, old_3⟩ => ⟨(«Array».«ANode» nxs_2 ys_1), old_3⟩)))
 
-def «Array.swap.hi» : ((T_0 : Type) → ((xs_1 : («Array» T_0)) → ((r_2 : ((_ : («Array» T_0)) × T_0)) → ((_ : («Array» T_0)) × T_0)))) :=
+def «Array.swap.hi» : ((T_0 : Type _) → ((xs_1 : («Array» T_0)) → ((r_2 : ((_ : («Array» T_0)) × T_0)) → ((_ : («Array» T_0)) × T_0)))) :=
   (fun T_0 => (fun xs_1 => (fun m_1064 => match m_1064 with | ⟨nys_2, old_3⟩ => ⟨(«Array».«ANode» xs_1 nys_2), old_3⟩)))
 
-def «Array.swap.go» : ((T_0 : Type) → ((a_1 : («Array» T_0)) → ((n_2 : «U32») → ((i_3 : «U32») → ((v_4 : T_0) → ((z_5 : Bool) → ((_ : («Array» T_0)) × T_0))))))) :=
+def «Array.swap.go» : ((T_0 : Type _) → ((a_1 : («Array» T_0)) → ((n_2 : «U32») → ((i_3 : «U32») → ((v_4 : T_0) → ((z_5 : Bool) → ((_ : («Array» T_0)) × T_0))))))) :=
   (fun T_0 => (fun m_1065 => match m_1065 with | «Array».«ALeaf» x_1 => (fun n_2 => (fun i_3 => (fun v_4 => (fun z_5 => ⟨(«Array».«ALeaf» v_4), x_1⟩)))) | «Array».«ANode» xs_1 ys_2 => (fun n_3 => (fun i_4 => (fun v_5 => (fun m_1066 => match m_1066 with | true => (let h_6 := («U32.shr» n_3); («Array.swap.lo» T_0 ys_2 («Array.swap.go» T_0 xs_1 h_6 i_4 v_5 («U32.is_lt» i_4 («U32.shr» h_6))))) | false => (let h_6 := («U32.shr» n_3); (let j_7 := («U32.sub» i_4 h_6); («Array.swap.hi» T_0 xs_1 («Array.swap.go» T_0 ys_2 h_6 j_7 v_5 («U32.is_lt» j_7 («U32.shr» h_6))))))))))))
 
-def «Array.swap.at» : ((T_0 : Type) → ((i_1 : «U32») → ((v_2 : T_0) → ((an_3 : ((_ : («Array» T_0)) × «U32»)) → ((_ : («Array» T_0)) × T_0))))) :=
+def «Array.swap.at» : ((T_0 : Type _) → ((i_1 : «U32») → ((v_2 : T_0) → ((an_3 : ((_ : («Array» T_0)) × «U32»)) → ((_ : («Array» T_0)) × T_0))))) :=
   (fun T_0 => (fun i_1 => (fun v_2 => (fun m_1067 => match m_1067 with | ⟨a_3, n_4⟩ => (let j_5 := («U32.and» i_1 («U32.sub» n_4 («U32».«U32» (bwordOf 32 1)))); («Array.swap.go» T_0 a_3 n_4 j_5 v_2 («U32.is_lt» j_5 («U32.shr» n_4))))))))
 
-def «Array.swap» : ((T_0 : Type) → ((a_1 : («Array» T_0)) → ((i_2 : «U32») → ((v_3 : T_0) → ((_ : («Array» T_0)) × T_0))))) :=
+def «Array.swap» : ((T_0 : Type _) → ((a_1 : («Array» T_0)) → ((i_2 : «U32») → ((v_3 : T_0) → ((_ : («Array» T_0)) × T_0))))) :=
   (fun T_0 => (fun a_1 => (fun i_2 => (fun v_3 => («Array.swap.at» T_0 i_2 v_3 («Array.size» T_0 a_1))))))
 
-def «Array.set.fin» : ((T_0 : Type) → ((r_1 : ((_ : («Array» T_0)) × T_0)) → («Array» T_0))) :=
+def «Array.set.fin» : ((T_0 : Type _) → ((r_1 : ((_ : («Array» T_0)) × T_0)) → («Array» T_0))) :=
   (fun T_0 => (fun m_1068 => match m_1068 with | ⟨na_1, old_2⟩ => na_1))
 
-def «Array.set» : ((T_0 : Type) → ((a_1 : («Array» T_0)) → ((i_2 : «U32») → ((v_3 : T_0) → («Array» T_0))))) :=
+def «Array.set» : ((T_0 : Type _) → ((a_1 : («Array» T_0)) → ((i_2 : «U32») → ((v_3 : T_0) → («Array» T_0))))) :=
   (fun T_0 => (fun a_1 => (fun i_2 => (fun v_3 => («Array.set.fin» T_0 («Array.swap» T_0 a_1 i_2 v_3))))))
 
-def «Array.get.go» : ((T_0 : Type) → ((a_1 : («Array» T_0)) → ((n_2 : «U32») → ((i_3 : «U32») → ((z_4 : Bool) → ((_ : («Array» T_0)) × T_0)))))) :=
+def «Array.get.go» : ((T_0 : Type _) → ((a_1 : («Array» T_0)) → ((n_2 : «U32») → ((i_3 : «U32») → ((z_4 : Bool) → ((_ : («Array» T_0)) × T_0)))))) :=
   (fun T_0 => (fun m_1069 => match m_1069 with | «Array».«ALeaf» x_1 => (fun n_2 => (fun i_3 => (fun z_4 => ⟨(«Array».«ALeaf» x_1), x_1⟩))) | «Array».«ANode» xs_1 ys_2 => (fun n_3 => (fun i_4 => (fun m_1070 => match m_1070 with | true => (let h_5 := («U32.shr» n_3); («Array.swap.lo» T_0 ys_2 («Array.get.go» T_0 xs_1 h_5 i_4 («U32.is_lt» i_4 («U32.shr» h_5))))) | false => (let h_5 := («U32.shr» n_3); (let j_6 := («U32.sub» i_4 h_5); («Array.swap.hi» T_0 xs_1 («Array.get.go» T_0 ys_2 h_5 j_6 («U32.is_lt» j_6 («U32.shr» h_5)))))))))))
 
-def «Array.get.at» : ((T_0 : Type) → ((i_1 : «U32») → ((an_2 : ((_ : («Array» T_0)) × «U32»)) → ((_ : («Array» T_0)) × T_0)))) :=
+def «Array.get.at» : ((T_0 : Type _) → ((i_1 : «U32») → ((an_2 : ((_ : («Array» T_0)) × «U32»)) → ((_ : («Array» T_0)) × T_0)))) :=
   (fun T_0 => (fun i_1 => (fun m_1071 => match m_1071 with | ⟨a_2, n_3⟩ => (let j_4 := («U32.and» i_1 («U32.sub» n_3 («U32».«U32» (bwordOf 32 1)))); («Array.get.go» T_0 a_2 n_3 j_4 («U32.is_lt» j_4 («U32.shr» n_3)))))))
 
-def «Array.get» : ((T_0 : Type) → ((a_1 : («Array» T_0)) → ((i_2 : «U32») → ((_ : («Array» T_0)) × T_0)))) :=
+def «Array.get» : ((T_0 : Type _) → ((a_1 : («Array» T_0)) → ((i_2 : «U32») → ((_ : («Array» T_0)) × T_0)))) :=
   (fun T_0 => (fun a_1 => (fun i_2 => («Array.get.at» T_0 i_2 («Array.size» T_0 a_1)))))
 
-def «ARRLAWS:le» : ((a_0 : Nat) → ((b_1 : Nat) → Type)) :=
+def «ARRLAWS:le» : ((a_0 : Nat) → ((b_1 : Nat) → Type _)) :=
   (fun a_0 => (fun b_1 => (@Beq Bool («Nat.is_le» a_0 b_1) true)))
 
-def «ARRLAWS:lt» : ((a_0 : Nat) → ((b_1 : Nat) → Type)) :=
+def «ARRLAWS:lt» : ((a_0 : Nat) → ((b_1 : Nat) → Type _)) :=
   (fun a_0 => (fun b_1 => (@Beq Bool («Nat.is_lt» a_0 b_1) true)))
 
-def «ARRLAWS:efq» : ((G_0 : Type) → ((x_1 : Empty) → G_0)) :=
+def «ARRLAWS:efq» : ((G_0 : Type _) → ((x_1 : Empty) → G_0)) :=
   (fun G_0 => (fun e_1072 => nomatch e_1072))
 
-def «ARRLAWS:bdisc» : ((b_0 : Bool) → Type) :=
+def «ARRLAWS:bdisc» : ((b_0 : Bool) → Type _) :=
   (fun m_1073 => match m_1073 with | false => Unit | true => Empty)
 
-def «ARRLAWS:ndisc» : ((n_0 : Nat) → Type) :=
+def «ARRLAWS:ndisc» : ((n_0 : Nat) → Type _) :=
   (fun m_1074 => match m_1074 with | Nat.zero => Empty | Nat.succ q_0 => Unit)
 
 def «ARRLAWS:ft» : ((e_0 : (@Beq Bool false true)) → Empty) :=
@@ -533,19 +533,19 @@ def «main:suffix.k» : ((a_0 : Nat) → ((r_1 : ((_ : Nat) × (List Nat))) → 
 def «main:suffix» : ((ps_0 : (List Nat)) → ((a_1 : Nat) → ((_ : Nat) × (List Nat)))) :=
   (fun m_1246 => match m_1246 with | [] => (fun a_0 => ⟨a_0, []⟩) | b_0 :: qs_1 => (fun a_2 => («main:suffix.k» a_2 («main:suffix» qs_1 b_0))))
 
-def «main:tstep.k» : ((C_0 : Type) → ((set_1 : ((x_1 : C_0) → ((x_2 : Nat) → ((x_3 : Nat) → C_0)))) → ((i_2 : Nat) → ((s_3 : Nat) → ((r_4 : ((_ : C_0) × Nat)) → ((_ : C_0) × Nat)))))) :=
+def «main:tstep.k» : ((C_0 : Type _) → ((set_1 : ((x_1 : C_0) → ((x_2 : Nat) → ((x_3 : Nat) → C_0)))) → ((i_2 : Nat) → ((s_3 : Nat) → ((r_4 : ((_ : C_0) × Nat)) → ((_ : C_0) × Nat)))))) :=
   (fun C_0 => (fun set_1 => (fun i_2 => (fun s_3 => (fun m_1247 => match m_1247 with | ⟨b_4, x_5⟩ => (let v_6 := («Nat.add» x_5 s_3); ⟨(set_1 b_4 i_2 v_6), v_6⟩))))))
 
-def «main:tstep» : ((C_0 : Type) → ((get_1 : ((x_1 : C_0) → ((x_2 : Nat) → ((_ : C_0) × Nat)))) → ((set_2 : ((x_2 : C_0) → ((x_3 : Nat) → ((x_4 : Nat) → C_0)))) → ((r_3 : ((_ : C_0) × Nat)) → ((i_4 : Nat) → ((_ : C_0) × Nat)))))) :=
+def «main:tstep» : ((C_0 : Type _) → ((get_1 : ((x_1 : C_0) → ((x_2 : Nat) → ((_ : C_0) × Nat)))) → ((set_2 : ((x_2 : C_0) → ((x_3 : Nat) → ((x_4 : Nat) → C_0)))) → ((r_3 : ((_ : C_0) × Nat)) → ((i_4 : Nat) → ((_ : C_0) × Nat)))))) :=
   (fun C_0 => (fun get_1 => (fun set_2 => (fun m_1248 => match m_1248 with | ⟨a_3, s_4⟩ => (fun i_5 => («main:tstep.k» C_0 set_2 i_5 s_4 (get_1 a_3 i_5)))))))
 
-def «main:tloop» : ((C_0 : Type) → ((get_1 : ((x_1 : C_0) → ((x_2 : Nat) → ((_ : C_0) × Nat)))) → ((set_2 : ((x_2 : C_0) → ((x_3 : Nat) → ((x_4 : Nat) → C_0)))) → ((k_3 : Nat) → ((r_4 : ((_ : C_0) × Nat)) → ((j_5 : Nat) → ((_ : C_0) × Nat))))))) :=
+def «main:tloop» : ((C_0 : Type _) → ((get_1 : ((x_1 : C_0) → ((x_2 : Nat) → ((_ : C_0) × Nat)))) → ((set_2 : ((x_2 : C_0) → ((x_3 : Nat) → ((x_4 : Nat) → C_0)))) → ((k_3 : Nat) → ((r_4 : ((_ : C_0) × Nat)) → ((j_5 : Nat) → ((_ : C_0) × Nat))))))) :=
   (fun C_0 => (fun get_1 => (fun set_2 => (fun m_1249 => match m_1249 with | Nat.zero => (fun r_3 => (fun j_4 => r_3)) | Nat.succ q_3 => (fun r_4 => (fun j_5 => («main:tloop» C_0 get_1 set_2 q_3 («main:tstep» C_0 get_1 set_2 r_4 («Nat.add» j_5 q_3)) j_5)))))))
 
-def «main:tpass» : ((C_0 : Type) → ((get_1 : ((x_1 : C_0) → ((x_2 : Nat) → ((_ : C_0) × Nat)))) → ((set_2 : ((x_2 : C_0) → ((x_3 : Nat) → ((x_4 : Nat) → C_0)))) → ((c_3 : Nat) → ((a_4 : C_0) → ((j_5 : Nat) → ((_ : C_0) × Nat))))))) :=
+def «main:tpass» : ((C_0 : Type _) → ((get_1 : ((x_1 : C_0) → ((x_2 : Nat) → ((_ : C_0) × Nat)))) → ((set_2 : ((x_2 : C_0) → ((x_3 : Nat) → ((x_4 : Nat) → C_0)))) → ((c_3 : Nat) → ((a_4 : C_0) → ((j_5 : Nat) → ((_ : C_0) × Nat))))))) :=
   (fun C_0 => (fun get_1 => (fun set_2 => (fun c_3 => (fun a_4 => (fun j_5 => («main:tloop» C_0 get_1 set_2 c_3 (get_1 a_4 («Nat.add» j_5 c_3)) j_5)))))))
 
-def «main:tshift» : ((C_0 : Type) → ((get_1 : ((x_1 : C_0) → ((x_2 : Nat) → ((_ : C_0) × Nat)))) → ((set_2 : ((x_2 : C_0) → ((x_3 : Nat) → ((x_4 : Nat) → C_0)))) → ((c_3 : Nat) → ((a_4 : C_0) → ((j_5 : Nat) → C_0)))))) :=
+def «main:tshift» : ((C_0 : Type _) → ((get_1 : ((x_1 : C_0) → ((x_2 : Nat) → ((_ : C_0) × Nat)))) → ((set_2 : ((x_2 : C_0) → ((x_3 : Nat) → ((x_4 : Nat) → C_0)))) → ((c_3 : Nat) → ((a_4 : C_0) → ((j_5 : Nat) → C_0)))))) :=
   (fun C_0 => (fun get_1 => (fun set_2 => (fun m_1250 => match m_1250 with | Nat.zero => (fun a_3 => (fun j_4 => a_3)) | Nat.succ d_3 => (fun a_4 => (fun j_5 => («main:tshift» C_0 get_1 set_2 d_3 («Pair.fst» C_0 Nat («main:tpass» C_0 get_1 set_2 (Nat.succ d_3) a_4 j_5)) (Nat.succ j_5))))))))
 
 def «main:arr_get» : ((a_0 : («Array» Nat)) → ((i_1 : Nat) → ((_ : («Array» Nat)) × Nat))) :=
@@ -713,13 +713,13 @@ def «LISTPROOF:pred» : ((n_0 : Nat) → Nat) :=
 def «LISTPROOF:sinj» : ((a_0 : Nat) → ((b_1 : Nat) → ((e_2 : (@Beq Nat (Nat.succ a_0) (Nat.succ b_1))) → (@Beq Nat a_0 b_1)))) :=
   (fun a_0 => (fun b_1 => (fun e_2 => («Equal.cong» Nat Nat (fun n_3 => («LISTPROOF:pred» n_3)) (Nat.succ a_0) (Nat.succ b_1) e_2))))
 
-def «LISTPROOF:disc» : ((n_0 : Nat) → Type) :=
+def «LISTPROOF:disc» : ((n_0 : Nat) → Type _) :=
   (fun m_1287 => match m_1287 with | Nat.zero => Empty | Nat.succ q_0 => Unit)
 
 def «LISTPROOF:zne» : ((q_0 : Nat) → ((e_1 : (@Beq Nat (0 : Nat) (Nat.succ q_0))) → Empty)) :=
   (fun q_0 => (fun e_1 => (Beq.J (fun x_2 x_3 => («LISTPROOF:disc» x_2)) («Equal.sym» Nat (0 : Nat) (Nat.succ q_0) e_1) ())))
 
-def «LISTPROOF:efq» : ((G_0 : Type) → ((x_1 : Empty) → G_0)) :=
+def «LISTPROOF:efq» : ((G_0 : Type _) → ((x_1 : Empty) → G_0)) :=
   (fun G_0 => (fun e_1288 => nomatch e_1288))
 
 def «LISTPROOF:lsp» : ((c_0 : Nat) → ((R_1 : (List Nat)) → (List Nat))) :=

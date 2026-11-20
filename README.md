@@ -45,9 +45,12 @@ Lean checks it in about 5 s. Its only axioms are Lean's standard `propext` and `
 | `Nat`, `Bool`, `List`, `Unit`, `Empty` | Lean's own types |
 | `Pair`, `Sigma`, `Exists` | `Σ` |
 | `Word(n)`, U32 / F32 / String literals | the indexed type `BWord n`, the literal's bits or characters |
-| user datatypes | `inductive`; value parameters become indices; mutual types go in a `mutual` block |
+| user datatypes | universe-polymorphic `inductive`; value parameters, and type parameters a recursive field changes, become indices; mutual types go in a `mutual` block |
+| `Type` | `Type _`, so Lean solves the levels of Bend's single universe |
 | quantities | erased |
 | cycles of definitions | broken by inlining the non-recursive members within the cycle |
+| lexicographic recursion on two `Nat`s (Ackermann) | nested `Nat.rec`, so the equations still hold by definition |
+| a literal in a recursive call, pinned by the match (`case 300n: down(299n)`) | the pattern variable that holds it |
 
 `IO` code is effectful, not proof: it and everything that uses it are skipped and reported as effect code. Other unsupported definitions are skipped and reported as well.
 
@@ -59,16 +62,13 @@ The bridge back to Lean's `Eq` is `Beq.toEq` / `Beq.ofEq` (see `lean/FastBridge.
 
 | | |
 |---|---|
-| positive tests (Bend accepts) that Lean re-checks completely | **80 / 86** |
-| negative tests (Bend rejects) that Lean rejects too | **32 / 35** |
+| positive tests (Bend accepts) that Lean re-checks completely | **86 / 86** |
+| negative tests (Bend rejects) that Lean rejects too | **33 / 35** |
 | negative tests where Lean accepts an invalid proof | **0** |
 
-The three other negative tests are explained:
-- `PROOF` is rejected by Bend only for its `@unsafe` IO code; its proofs check in both.
+The two other negative tests are rejected by Bend for reasons outside the proofs:
+- `PROOF` is rejected only for its `@unsafe` IO code; its proofs check in both.
 - `LAWS` is rejected only for an open law, which the translator skips.
-- `match_as_binding` does not translate.
-
-The six positive tests that fail use lexicographic termination, `Type`-valued type arguments, constructor indices Lean can't infer, non-uniform nested types, or recursion on a literal.
 
 ## Requirements
 

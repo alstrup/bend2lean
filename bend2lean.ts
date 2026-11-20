@@ -65,6 +65,9 @@ function occurs(t: T, i: number): boolean {
 }
 const ren = new Map<number, string>();
 const inlined = new Map<string, T>();
+let lex: { p: number; q: number; ihp: string; ihq: string } | null = null;
+let natChain: string[] = [];              // x, pred(x), pred(pred(x)), ... of the current Nat match chain
+let litVar = new Map<number, string>();   // literal value -> the pattern variable known to hold it
 const sccOf = new Map<string, number>();
 let curDef = "";
 const inlining = new Set<string>();
@@ -81,16 +84,30 @@ function userCtr(k: string) {
 function inductive(k: string, d: T): string {
   // type parameters stay parameters; value parameters become indices (Lean needs that
   // when a recursive field uses a different value, as in Even p inside Even n)
+  ren.clear();
   let K = low(d.T);
   adtQ[k] = params(K);
+  // a type parameter that a recursive field changes (Grow A holding Grow (A × A)) must be an index
+  const lv: number[] = [];
+  { let K2 = K; while (K2.$ === "All") { lv.push(K2.i); K2 = K2.B; } }
+  let nonUniform = false;
+  const scan = (t: T) => {
+    if (!t || typeof t !== "object") return;
+    if (Array.isArray(t)) { t.forEach(scan); return; }
+    if (t.$ === "ADT" && t.k === k) t.x.forEach((x: T, j: number) => { if (!(x.$ === "Var" && x.i === lv[j])) nonUniform = true; });
+    for (const kk of Object.keys(t)) if (kk !== "s") scan(t[kk]);
+  };
+  d.c.forEach((c: T) => scan(low(c.T)));
   const ps: string[] = [], ix: string[] = [], ixb: string[] = [];
-  let np = 0;
+  let np = 0, tyIx = false;
   while (K.$ === "All") {
     np++;
     if (K.A.$ === "Qnt") { K = K.B; continue; }
-    if (K.A.$ === "Typ") {
+    if (K.A.$ === "Typ" && nonUniform) {
+      ix.push("Type u"); ixb.push(`{${vname(K.k, K.i)} : Type u}`); tyIx = true;
+    } else if (K.A.$ === "Typ") {
       if (ix.length) fail("a type parameter after a value parameter in " + k);
-      ps.push(`(${vname(K.k, K.i)} : Type)`);
+      ps.push(`(${vname(K.k, K.i)} : Type u)`);
     } else {
       ix.push(tm(K.A));
       ixb.push(`{${vname(K.k, K.i)} : ${tm(K.A)}}`);
@@ -104,7 +121,8 @@ function inductive(k: string, d: T): string {
     for (let j = 0; j < np; j++) t = t.B;
     return `  | ${lname(c.k)} ${ixb.join(" ")} : ${tm(t)}`;
   });
-  const sort = ix.length ? `${ix.join(" → ")} → Type` : "Type";
+  const res = tyIx ? "Type (u + 1)" : `Type${ps.length ? " u" : ""}`;
+  const sort = ix.length ? `${ix.join(" → ")} → ${res}` : res;
   return `inductive ${lname(k)} ${ps.join(" ")} : ${sort} where\n${arms.join("\n")}\n`;
 }
 // levels of type variables that some List or pair holds (they must live in Type)
@@ -131,7 +149,7 @@ function tm(t: T): string {
       used.add(t.k);
       return lname(t.k);
     }
-    case "Typ": return "Type";
+    case "Typ": return "Type _";
     case "Lit":
       if (t.k === "Nat") return `(${t.v} : Nat)`;
       if (t.k === "U32") return `(«U32».«U32» (bwordOf 32 ${t.v}))`;
@@ -220,6 +238,15 @@ function app(t: T): string {
   if (f.$ === "Ref" && f.k === "Exists" && args.length === 2) return `(@Sigma ${tm(args[0])} ${tm(args[1])})`;
   let keep = args;
   if (f.$ === "Ref" && qpos[f.k]) keep = args.filter((_, j) => !qpos[f.k][j]);
+  if (f.$ === "Ref" && f.k === curDef && lex) {
+    const [a0, a1, ...more] = keep;
+    if (a0 && a0.$ === "Var" && a0.i === lex.p) return `(${lex.ihp} ${[a1, ...more].map(tm).join(" ")})`;
+    if (a0 && a0.$ === "Ctr" && a0.k === "Succ" && a0.x[0].$ === "Var" && a0.x[0].i === lex.p && a1 && a1.$ === "Var" && a1.i === lex.q)
+      return more.length ? `(${lex.ihq} ${more.map(tm).join(" ")})` : lex.ihq;
+    return fail("a recursive call outside the lexicographic shape");
+  }
+  if (f.$ === "Ref" && f.k === curDef && litVar.size)
+    return `(${tm(f)} ${keep.map((a) => (a.$ === "Lit" && a.k === "Nat" && litVar.has(a.v) ? litVar.get(a.v) : tm(a))).join(" ")})`;
   return `(${tm(f)} ${keep.map(tm).join(" ")})`;
 }
 
@@ -247,7 +274,14 @@ function mat(t: T, x: string, rest: Arg[] = []): string {
     const c = ctrOf(t.k);
     const fs = fieldNames(t.h, c.n);
     seen.push(t.k);
+    const saveChain = natChain, saveLit = litVar;
+    if (t.k === "Succ") natChain = natChain.length && natChain[natChain.length - 1] === x ? [...natChain, fs[0]] : [x, fs[0]];
+    if (t.k === "Zero" && natChain.length && natChain[natChain.length - 1] === x) {
+      litVar = new Map(litVar);
+      natChain.forEach((v, j) => litVar.set(natChain.length - 1 - j, v));
+    }
     arms.push(`| ${c.pat(fs)} => ${consume(t.h, [...fs, ...rest])}`);
+    natChain = saveChain; litVar = saveLit;
     t = t.m;
   }
   if (t.$ !== "Efq") {
@@ -290,6 +324,44 @@ function consume(h: T, vars: Arg[]): string {
   }
   if (h.$ === "Efq") return `(nomatch ${argStr(v)})`;
   return `(${tm(h)} ${vars.map(argStr).join(" ")})`;
+}
+
+function lexShape(k: string, T0: T, v: T): boolean {
+  if (T0.$ !== "All" || T0.B.$ !== "All" || T0.A.$ !== "Ref" || T0.A.k !== "Nat" || T0.B.A.$ !== "Ref" || T0.B.A.k !== "Nat") return false;
+  if (v.$ !== "Mat" || v.k !== "Zero" || v.m.$ !== "Mat" || v.m.k !== "Succ" || v.m.h.$ !== "Lam") return false;
+  const inner = v.m.h.f;
+  if (inner.$ !== "Mat" || inner.k !== "Zero" || inner.m.$ !== "Mat" || inner.m.k !== "Succ" || inner.m.h.$ !== "Lam") return false;
+  let found = false;
+  const walk = (t: T) => {
+    if (!t || typeof t !== "object") return;
+    if (Array.isArray(t)) { t.forEach(walk); return; }
+    if (t.$ === "App") {
+      let h = t; const xs: T[] = [];
+      while (h.$ === "App") { xs.unshift(h.x); h = h.f; }
+      if (h.$ === "Ref" && h.k === k && xs[0]?.$ === "Ctr" && xs[0].k === "Succ") found = true;
+    }
+    for (const kk of Object.keys(t)) if (kk !== "s") walk(t[kk]);
+  };
+  walk(v);
+  return found;
+}
+
+// f m n = Nat.rec on m, then on n, the self-calls read off the induction hypotheses
+function lexRec(T0: T, v: T): string {
+  const mN = vname(T0.k, T0.i), nN = vname(T0.B.k, T0.B.i);
+  const pL = v.m.h, qL = v.m.h.f.m.h;
+  const pN = vname(pL.k, pL.i), qN = vname(qL.k, qL.i);
+  const ihp = "ih_" + fresh++, ihq = "ih_" + fresh++;
+  const outerM = `(fun ${mN} => ((${nN} : Nat) → ${tm(T0.B.B)}))`;
+  ren.set(T0.i, `(Nat.succ ${pN})`);
+  const innerM = `(fun ${nN} => ${tm(T0.B.B)})`;
+  ren.delete(T0.i);
+  const z = tm(v.h);
+  lex = { p: pL.i, q: qL.i, ihp, ihq };
+  const a = tm(v.m.h.f.h);
+  const b = tm(qL.f);
+  lex = null;
+  return `(fun ${mN} => @Nat.rec ${outerM} ${z} (fun ${pN} ${ihp} => (fun ${nN} => @Nat.rec ${innerM} ${a} (fun ${qN} ${ihq} => ${b}) ${nN})) ${mN})`;
 }
 
 // every def outside Base is a root: load Base alone to know its names
@@ -435,7 +507,7 @@ for (const k of order) {
     dataVars = new Set<number>();
     holds(Tl, dataVars);
     if (d.v) holds(low(d.v), dataVars);
-    ren.clear();
+    ren.clear(); natChain = []; litVar = new Map();
     curDef = k;
     let head = ret;
     while (head.$ === "App") head = head.f;
@@ -444,7 +516,9 @@ for (const k of order) {
     while (body.$ === "Lam") body = body.f;
     let tyS = tm(Tl);
 
-    const src = `${kw} ${lname(k)} : ${tyS} :=\n  ${tm(low(d.v))}\n`;
+    const vv = low(d.v);
+    const valS = lexShape(k, Tl, vv) ? lexRec(Tl, vv) : tm(vv);
+    const src = `${kw} ${lname(k)} : ${tyS} :=\n  ${valS}\n`;
     emitted.set(k, src);
     openFor();
     lines.push(src);

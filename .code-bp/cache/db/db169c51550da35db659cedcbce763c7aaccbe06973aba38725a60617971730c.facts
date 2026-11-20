@@ -1,19 +1,18 @@
 # code-bp facts v1
 # file: scripts/corpus.sh
-# content_hash: blake3:50090f7d691de06e289d679d2a3a3143dac677f46a3db43ce3c4c071f43886d0
+# content_hash: blake3:7f6647954a227e8c945c9290532e5ac5a8d480e99928f3740c02a136c7536495
 # lang: bash
-# vocab: grep LEAN ROOT skip timeout BEND_DIR to a bend checkout .bend BEND_DIR basename continue dirname head lean mktemp tests/proof/*.bend
-# n_facts: 13
-c	<script>	basename	9
-c	<script>	continue	11
-c	<script>	dirname	4
-c	<script>	grep	10
-c	<script>	grep	11
-c	<script>	grep	12
-c	<script>	grep	12
+# vocab: grep skip LEAN ROOT partial pass timeout BEND_DIR to a bend checkout .bend /dev/null ACCEPTED BEND_DIR basename continue dirname fail lean mktemp tests/proof/*.bend
+# n_facts: 12
+c	<script>	basename	13
+c	<script>	continue	16
+c	<script>	dirname	7
 c	<script>	grep	14
-c	<script>	grep	14
-c	<script>	head	10
-c	<script>	mktemp	6
-c	<script>	timeout	10
-c	<script>	timeout	13
+c	<script>	grep	16
+c	<script>	grep	17
+c	<script>	grep	17
+c	<script>	grep	19
+c	<script>	grep	19
+c	<script>	mktemp	9
+c	<script>	timeout	15
+c	<script>	timeout	18
