@@ -63,12 +63,13 @@ The bridge back to Lean's `Eq` is `Beq.toEq` / `Beq.ofEq` (see `lean/FastBridge.
 | | |
 |---|---|
 | positive tests (Bend accepts) that Lean re-checks completely | **86 / 86** |
-| negative tests (Bend rejects) that Lean rejects too | **33 / 35** |
+| negative tests (Bend rejects) that Lean rejects too | **32 / 35** |
 | negative tests where Lean accepts an invalid proof | **0** |
 
-The two other negative tests are rejected by Bend for reasons outside the proofs:
-- `PROOF` is rejected only for its `@unsafe` IO code; its proofs check in both.
+The three other negative tests:
+- `PROOF` is rejected by Bend only for its `@unsafe` IO code; its proofs check in both.
 - `LAWS` is rejected only for an open law, which the translator skips.
+- `match_as_binding` does not translate.
 
 ## Requirements
 
