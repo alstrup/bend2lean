@@ -46,8 +46,9 @@ theorem lb_is_le_eq (a b : Nat) : «Nat.is_le» a b = decide (a ≤ b) := by
     | zero => rfl
     | succ m => simp only [«Nat.is_le», «Nat.cmp»] at *; rw [ih m]; simp
 
-theorem lb_le_eq (a b : Nat) : «ARRLAWS:le» a b ↔ a ≤ b := by
-  simp [«ARRLAWS:le», lb_is_le_eq]
+/-- Bend's `le` is data: an equality of Bools, built here from Lean's `≤`. -/
+def lb_le_of (a b : Nat) (h : a ≤ b) : «ARRLAWS:le» a b :=
+  Beq.ofEq (by rw [lb_is_le_eq]; simp [h])
 
 /-- Horner evaluation of a coefficient list, lowest degree first. -/
 def horner (p : List Nat) (y : Nat) : Nat := p.foldr (fun a acc => a + y * acc) 0
@@ -74,18 +75,19 @@ theorem fast_taylor_shift (c : Nat) (pre R rest : List Nat) (hR : R.length = c +
         = «ARRLAWS:build» 6 (pre ++ (R.reverse ++ rest)) := by simp [lb_app_eq, lb_rev_eq]
     have hl : «ARRLAWS:le» («Nat.pow» 2 6)
         («ARRLAWS:len» («LISTPROOF:app» pre («LISTPROOF:app» («LISTPROOF:rev» R) rest))) := by
-      rw [lb_le_eq, lb_alen_eq, lb_app_eq, lb_app_eq, lb_rev_eq]
+      apply lb_le_of
+      rw [lb_alen_eq, lb_app_eq, lb_app_eq, lb_rev_eq]
       have : «Nat.pow» 2 6 = 64 := rfl
       rw [this]; exact hlen
     have hR' : «LISTPROOF:len» R = Nat.succ c := by rw [lb_len_eq]; exact hR
     have hb : «Nat.add» («Nat.add» («LISTPROOF:len» pre) c) (63 - (pre.length + c)) = 63 := by
       rw [lb_add_eq, lb_add_eq, lb_len_eq]; omega
-    have h := «ashift_ok» c _ pre R rest (63 - (pre.length + c)) hA hl hR' hb
+    have h := («ashift_ok» c _ pre R rest (63 - (pre.length + c)) (Beq.ofEq hA) hl (Beq.ofEq hR') (Beq.ofEq hb)).toEq
     simp only [lb_app_eq, lb_len_eq] at h
     exact h.symm
   · intro y
     have hR' : «LISTPROOF:len» R = Nat.succ c := by rw [lb_len_eq]; exact hR
-    have h := «LISTPROOF:ev_lsp» c R y hR'
+    have h := («LISTPROOF:ev_lsp» c R y (Beq.ofEq hR')).toEq
     simp only [lb_eval_eq, lb_rev_eq] at h
     exact h
 

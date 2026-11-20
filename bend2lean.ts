@@ -50,18 +50,27 @@ const CTRS: Record<string, { pat: (fs: string[]) => string; term: (fs: string[])
   True: { n: 0, pat: () => "true", term: () => "true" },
   Nil: { n: 0, pat: () => "[]", term: () => "[]" },
   Con: { n: 2, pat: ([h, t]) => `${h} :: ${t}`, term: ([h, t]) => `(${h} :: ${t})` },
-  Tuple: { n: 2, pat: ([a, b]) => `(${a}, ${b})`, term: ([a, b]) => `(${a}, ${b})` },
+  Tuple: { n: 2, pat: ([a, b]) => `⟨${a}, ${b}⟩`, term: ([a, b]) => `⟨${a}, ${b}⟩` },
   Unit: { n: 0, pat: () => "()", term: () => "()" },
   WNil: { n: 0, pat: () => "BWord.nil", term: () => "BWord.nil" },
   WCon: { n: 2, pat: ([h, t]) => `BWord.con ${h} ${t}`, term: ([h, t]) => `(BWord.con ${h} ${t})` },
 };
 
 const used = new Set<string>();
+function occurs(t: T, i: number): boolean {
+  if (!t || typeof t !== "object") return false;
+  if (Array.isArray(t)) return t.some((x) => occurs(x, i));
+  if (t.$ === "Var" && t.i === i) return true;
+  return Object.keys(t).some((k) => k !== "s" && occurs(t[k], i));
+}
 const ren = new Map<number, string>();
 const inlined = new Map<string, T>();
+const sccOf = new Map<string, number>();
+let curDef = "";
 const inlining = new Set<string>();
 const props = new Set<string>();
 const user = new Set<string>();
+const adtQ: Record<string, boolean[]> = {};
 function userCtr(k: string) {
   const c = book.ctrs[k];
   if (!c || !user.has(c.f)) return null;
@@ -70,12 +79,22 @@ function userCtr(k: string) {
 }
 // a non-indexed datatype: parameters are its type's binders, fields the rest of each constructor
 function inductive(k: string, d: T): string {
+  // type parameters stay parameters; value parameters become indices (Lean needs that
+  // when a recursive field uses a different value, as in Even p inside Even n)
   let K = low(d.T);
-  const ps: string[] = [];
+  adtQ[k] = params(K);
+  const ps: string[] = [], ix: string[] = [], ixb: string[] = [];
   let np = 0;
   while (K.$ === "All") {
     np++;
-    if (K.A.$ !== "Qnt") ps.push(`(${vname(K.k, K.i)} : ${K.A.$ === "Typ" ? "Type" : tm(K.A)})`);
+    if (K.A.$ === "Qnt") { K = K.B; continue; }
+    if (K.A.$ === "Typ") {
+      if (ix.length) fail("a type parameter after a value parameter in " + k);
+      ps.push(`(${vname(K.k, K.i)} : Type)`);
+    } else {
+      ix.push(tm(K.A));
+      ixb.push(`{${vname(K.k, K.i)} : ${tm(K.A)}}`);
+    }
     K = K.B;
   }
   if (K.$ !== "Typ") fail("indexed datatype " + k);
@@ -83,9 +102,10 @@ function inductive(k: string, d: T): string {
   const arms = d.c.map((c: T) => {
     let t = low(c.T);
     for (let j = 0; j < np; j++) t = t.B;
-    return `  | ${lname(c.k)} : ${tm(t)}`;
+    return `  | ${lname(c.k)} ${ixb.join(" ")} : ${tm(t)}`;
   });
-  return `inductive ${lname(k)} ${ps.join(" ")} : Type where\n${arms.join("\n")}\n`;
+  const sort = ix.length ? `${ix.join(" → ")} → Type` : "Type";
+  return `inductive ${lname(k)} ${ps.join(" ")} : ${sort} where\n${arms.join("\n")}\n`;
 }
 // levels of type variables that some List or pair holds (they must live in Type)
 let dataVars = new Set<number>();
@@ -114,12 +134,17 @@ function tm(t: T): string {
     case "Typ": return "Type";
     case "Lit":
       if (t.k === "Nat") return `(${t.v} : Nat)`;
-      if (t.k === "U32") { used.add("U32"); return `(«U32».«U32» (bwordOf 32 ${t.v}))`; }
+      if (t.k === "U32") return `(«U32».«U32» (bwordOf 32 ${t.v}))`;
+      if (t.k === "F32") return `(«F32».«F32» (bwordOf 32 ${t.v}))`;
+      if (t.k === "String") {
+        let s = "«String».«SNil»";
+        for (const ch of [...(t.v as string)].reverse()) s = `(«String».«SCon» («Char».«Chr» («U32».«U32» (bwordOf 32 ${ch.codePointAt(0)}))) ${s})`;
+        return s;
+      }
       return fail("literal " + t.k);
     case "All": {
       ren.delete(t.i);
       if (t.A.$ === "Qnt") return tm(t.B);
-      if (t.A.$ === "Typ" && !dataVars.has(t.i)) return `((${vname(t.k, t.i)} : Sort _) → ${tm(t.B)})`;
       return `((${vname(t.k, t.i)} : ${tm(t.A)}) → ${tm(t.B)})`;
     }
     case "Lam": ren.delete(t.i); return `(fun ${vname(t.k, t.i)} => ${tm(t.f)})`;
@@ -129,12 +154,16 @@ function tm(t: T): string {
       if (t.k === "Sigma") {
         // Sigma<a, b, A, _ => B>: a plain pair when B ignores its argument
         const [A, Bl] = t.x.slice(2);
-        if (Bl.$ !== "Lam") fail("dependent pair", t);
-        return `(${tm(A)} × ${tm(Bl.f)})`;
+        if (Bl.$ === "Lam") { ren.delete(Bl.i); return `((${vname(Bl.k, Bl.i)} : ${tm(A)}) × ${tm(Bl.f)})`; }
+        return `(@Sigma ${tm(A)} ${tm(Bl)})`;
       }
       if (t.k === "List") return ADTS.List([tm(t.x[t.x.length - 1])]);
       if (t.k in ADTS) return ADTS[t.k](xs);
-      if (user.has(t.k)) return xs.length ? `(${lname(t.k)} ${xs.join(" ")})` : lname(t.k);
+      if (user.has(t.k)) {
+        const qk = adtQ[t.k] ?? [];
+        const ys = t.x.filter((_: T, j: number) => !qk[j]).map(tm);
+        return ys.length ? `(${lname(t.k)} ${ys.join(" ")})` : lname(t.k);
+      }
       return fail("datatype " + t.k, t);
     }
     case "Ctr": {
@@ -145,14 +174,14 @@ function tm(t: T): string {
       const x = "m_" + fresh++;
       return `(fun ${x} => ${mat(t, x)})`;
     }
-    case "Eql": return `(@Eq ${tm(t.T)} ${tm(t.a)} ${tm(t.b)})`;
-    case "Rfl": return "rfl";
+    case "Eql": return `(@Beq ${tm(t.T)} ${tm(t.a)} ${tm(t.b)})`;
+    case "Rfl": return "Beq.refl";
     case "Rwt": {
       // %e : P; f  with P = _ => e => P'
       const p = t.p;
       if (p.$ !== "Lam" || p.f.$ !== "Lam") fail("rewrite motive", t);
       ren.delete(p.i); ren.delete(p.f.i);
-      return `(Eq.mp (congrArg (fun ${vname(p.k, p.i)} => ${tm(p.f.f)}) ${tm(t.e)}) ${tm(t.f)})`;
+      return `(Beq.J (fun ${vname(p.k, p.i)} ${vname(p.f.k, p.f.i)} => ${tm(p.f.f)}) ${tm(t.e)} ${tm(t.f)})`;
     }
     case "Ann": return `(${tm(t.x)} : ${tm(t.T)})`;
     case "Let": {
@@ -179,7 +208,7 @@ function app(t: T): string {
     const body = scr.$ === "Var" ? mat(f, s) : `(fun m => ${mat(f, "m")}) ${s}`;
     return rest.length ? `((${body}) ${rest.map(tm).join(" ")})` : `(${body})`;
   }
-  if (f.$ === "Ref" && inlined.has(f.k) && !inlining.has(f.k)) {
+  if (f.$ === "Ref" && inlined.has(f.k) && !inlining.has(f.k) && sccOf.get(f.k) === sccOf.get(curDef)) {
     const saved = new Map(ren);
     inlining.add(f.k);
     const s = consume(inlined.get(f.k), args.map(tm));
@@ -187,7 +216,8 @@ function app(t: T): string {
     ren.clear(); for (const [a, b] of saved) ren.set(a, b);
     return `(${s})`;
   }
-  if (f.$ === "Ref" && f.k === "Pair" && args.length === 2) return `(${tm(args[0])} × ${tm(args[1])})`;
+  if (f.$ === "Ref" && f.k === "Pair" && args.length === 2) return `((_ : ${tm(args[0])}) × ${tm(args[1])})`;
+  if (f.$ === "Ref" && f.k === "Exists" && args.length === 2) return `(@Sigma ${tm(args[0])} ${tm(args[1])})`;
   let keep = args;
   if (f.$ === "Ref" && qpos[f.k]) keep = args.filter((_, j) => !qpos[f.k][j]);
   return `(${tm(f)} ${keep.map(tm).join(" ")})`;
@@ -276,13 +306,17 @@ function refs(t: T, acc: Set<string>) {
   if (Array.isArray(t)) { t.forEach((x) => refs(x, acc)); return; }
   if (t.$ === "Ref") acc.add(t.k);
   if (t.$ === "ADT") acc.add(t.k);
+  if (t.$ === "Lit" && t.k === "U32") acc.add("U32");
+  if (t.$ === "Lit" && t.k === "F32") acc.add("F32");
+  if (t.$ === "Lit" && t.k === "String") { acc.add("String"); acc.add("Char"); acc.add("U32"); }
   if (t.$ === "Ctr" && book.ctrs[t.k]) acc.add(book.ctrs[t.k].f);
   for (const k of Object.keys(t)) if (k !== "s") refs(t[k], acc);
 }
 
 const need = new Set<string>();
+const EFFECT = new Set(["IO"]);
 function visit(k: string) {
-  if (need.has(k) || k in ADTS || k === "Word" || k === "Pair" || k === "Sigma") return;
+  if (need.has(k) || k in ADTS || k === "Word" || k === "Pair" || k === "Sigma" || k === "Exists" || EFFECT.has(k)) return;
   const d: T = book.tlds[k];
   if (!d) return;
   need.add(k);
@@ -296,7 +330,18 @@ for (const k of todo) visit(k);
 
 // translate in dependency order; a def that fails, or uses one that did, is skipped
 const skipped = new Map<string, string>();
-const lines: string[] = ["-- generated by bend2lean from " + file, "set_option maxRecDepth 4000", "set_option linter.unusedVariables false", "namespace Bend", "",
+const lines: string[] = ["-- generated by bend2lean from " + file, "set_option maxRecDepth 4000", "set_option linter.unusedVariables false", "universe u v", "noncomputable section", "namespace Bend", "",
+  "-- Bend's equality is data, as in Bend: a Type-valued equality with transport",
+  "inductive Beq {α : Sort u} (a : α) : α → Type where",
+  "  | refl : Beq a a",
+  "def Beq.mp {α : Sort u} {a b : α} (P : α → Sort v) (e : Beq a b) (x : P a) : P b :=",
+  "  match e with | .refl => x",
+  "def Beq.J {α : Sort u} {a : α} (P : (b : α) → Beq a b → Sort v) {b : α} (e : Beq a b) (x : P a .refl) : P b e :=",
+  "  match e with | .refl => x",
+  "theorem Beq.toEq {α : Sort u} {a b : α} : Beq a b → a = b",
+  "  | .refl => rfl",
+  "def Beq.ofEq {α : Sort u} {a b : α} (h : a = b) : Beq a b := h ▸ .refl",
+  "",
   "-- Bend's Word(n): n bits, lowest first",
   "inductive BWord : Nat → Type where",
   "  | nil : BWord 0",
@@ -314,7 +359,7 @@ const deps = (k: string): string[] => {
   refs(low(d.T), acc);
   if (d.$ === "Def" && d.v) refs(low(d.v), acc);
   if (d.$ === "ADT") for (const c of d.c) refs(low(c.T), acc);
-  return [...acc].filter((r) => need.has(r) && r !== "Word" && r !== "Pair" && r !== "Sigma");
+  return [...acc].filter((r) => need.has(r) && r !== "Word" && r !== "Pair" && r !== "Sigma" && r !== "Exists");
 };
 const sccs: string[][] = [];
 {
@@ -340,6 +385,7 @@ const sccs: string[][] = [];
 const selfRec = (k: string) => { const acc = new Set<string>(); const d: T = book.tlds[k]; if (d.v) refs(low(d.v), acc); return acc.has(k); };
 const order: string[] = [];
 const mutualOf = new Map<string, string[]>();
+sccs.forEach((c, j) => c.forEach((k) => sccOf.set(k, j)));
 for (const c of sccs) {
   if (c.length === 1) { order.push(c[0]); continue; }
   let inl = c.filter((k) => book.tlds[k].$ === "Def" && !selfRec(k));
@@ -354,18 +400,21 @@ for (const c of sccs) {
   } else { for (const k of c) mutualOf.set(k, c); order.push(...c); }
 }
 const mutualOpen = new Set<string[]>();
+let openMc: string[] | null = null;
 for (const k of order) {
+  const mc = mutualOf.get(k) ?? null;
+  if (openMc && mc !== openMc) { lines.push("end", ""); openMc = null; }
+  const openFor = () => { if (mc && openMc !== mc) { lines.push("mutual"); openMc = mc; } };
   if (emitted.has(k) || skipped.has(k)) continue;
-  const mc = mutualOf.get(k);
-  if (mc && !mutualOpen.has(mc)) { mutualOpen.add(mc); lines.push("mutual"); }
   const d0: T = book.tlds[k];
   if (d0.$ === "ADT") {
     if (k in ADTS) continue;
     const acc = new Set<string>();
     for (const c of d0.c) refs(low(c.T), acc);
-    const bad = [...acc].find((r) => r !== k && r !== "Word" && r !== "Pair" && r !== "Sigma" && (skipped.has(r) || (book.tlds[r]?.$ === "ADT" && !(r in ADTS) && r !== "Sigma" && !emitted.has(r))));
+    const bad = [...acc].find((r) => r !== k && !(mc && mc.includes(r)) && r !== "Word" && r !== "Pair" && r !== "Sigma" && r !== "Exists" && (skipped.has(r) || (book.tlds[r]?.$ === "ADT" && !(r in ADTS) && r !== "Sigma" && !emitted.has(r))));
     if (bad) { skipped.set(k, "uses " + bad); continue; }
-    try { const src = inductive(k, d0); emitted.set(k, src); lines.push(src); }
+    if (mc) for (const r of mc) if (book.tlds[r]?.$ === "ADT") user.add(r);
+    try { const src = inductive(k, d0); emitted.set(k, src); openFor(); lines.push(src); }
     catch (e) { skipped.set(k, (e as Error).message.slice(0, 80)); }
     continue;
   }
@@ -375,7 +424,9 @@ for (const k of order) {
   const acc = new Set<string>();
   refs(Tl, acc);
   if (d.v) refs(low(d.v), acc);
-  const bad = [...acc].find((r) => r !== "Word" && r !== "Pair" && r !== "Sigma" && (skipped.has(r) || (book.tlds[r]?.$ === "ADT" && !(r in ADTS) && r !== "Sigma" && !emitted.has(r))));
+  const eff = [...acc].find((r) => EFFECT.has(r) || skipped.get(r)?.startsWith("effect"));
+  if (eff) { skipped.set(k, "effect (uses " + eff + ")"); continue; }
+  const bad = [...acc].find((r) => r !== "Word" && r !== "Pair" && r !== "Sigma" && r !== "Exists" && (skipped.has(r) || (book.tlds[r]?.$ === "ADT" && !(r in ADTS) && r !== "Sigma" && !emitted.has(r))));
   if (bad) { skipped.set(k, "uses " + bad); continue; }
   if (!d.v) { skipped.set(k, "law without proof"); continue; }
   try {
@@ -385,24 +436,28 @@ for (const k of order) {
     holds(Tl, dataVars);
     if (d.v) holds(low(d.v), dataVars);
     ren.clear();
+    curDef = k;
     let head = ret;
     while (head.$ === "App") head = head.f;
-    const kw = ret.$ === "Eql" || (head.$ === "Ref" && props.has(head.k)) ? "theorem" : "def";
+    const kw = "def";
     let body = low(d.v);
     while (body.$ === "Lam") body = body.f;
     let tyS = tm(Tl);
-    if (ret.$ === "Typ" && body.$ === "Eql") { tyS = tyS.replace(/ Type\)*$/, (m: string) => m.replace("Type", "Prop")); props.add(k); }
+
     const src = `${kw} ${lname(k)} : ${tyS} :=\n  ${tm(low(d.v))}\n`;
     emitted.set(k, src);
+    openFor();
     lines.push(src);
-    if (mc && mc[mc.length - 1] === k) lines.push("end", "");
+
   } catch (e) {
     skipped.set(k, (e as Error).message.slice(0, 80));
   }
 }
-lines.push("end Bend", "");
+if (openMc) lines.push("end", "");
+lines.push("end Bend", "end", "");
 for (const k of new Set(rootDefs)) if (emitted.has(k)) lines.push(`#print axioms Bend.${lname(k)}`);
 const text = lines.join("\n");
 if (out) fs.writeFileSync(out, text); else console.log(text);
-console.error(`translated ${emitted.size} defs; skipped ${skipped.size}`);
+const effects = [...skipped.values()].filter((v) => v.startsWith("effect")).length;
+console.error(`translated ${emitted.size} defs; skipped ${skipped.size - effects}; effect code ${effects}`);
 for (const k of (process.env.ALLSKIP ? [...skipped.keys()] : rootDefs)) if (skipped.has(k)) console.error(`  skipped ${k}: ${skipped.get(k)}`);

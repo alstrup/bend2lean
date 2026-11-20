@@ -1,0 +1,11 @@
+# code-bp facts v1
+# file: scripts/build.sh
+# content_hash: blake3:2b7bca3b313588cd38a87e66c9b765661a2b1fc5abe5e82f9026af6008e22dcd
+# lang: bash
+# vocab: ROOT LEAN -euo SIMPROOF2.bend dirname grep lean pipefail
+# n_facts: 5
+c	<script>	"$LEAN"	10
+c	<script>	bun	8
+c	<script>	cat	9
+c	<script>	dirname	5
+c	<script>	grep	10

@@ -31,31 +31,44 @@ theorem Bend.fast_taylor_shift (c : Nat) (pre R rest : List Nat) (hR : R.length 
       ∀ y, horner Q y = horner R.reverse (y + 1)
 ```
 
-Lean checks it in about 5 s. Its only axioms are `propext` and `Quot.sound`; there is no `sorry`. The compiled Bend version (`bench/taylor_bench.bend`) runs 2^20 shifts in about 0.7 s on one core. Lean's in-place version (`bench/TaylorBench.lean`) takes about 5 s.
+Lean checks it in about 5 s. Its only axioms are Lean's standard `propext` and `Quot.sound`; there is no `sorry`. The compiled Bend version (`bench/taylor_bench.bend`) runs 2^20 shifts in about 0.7 s on one core. Lean's in-place version (`bench/TaylorBench.lean`) takes about 5 s.
 
 ## How the translation works
 
 | Bend core | Lean |
 |---|---|
-| λ-match chain | `fun x => match x with …`; default arms expanded into the remaining constructors |
-| `%e : P; f` | `Eq.mp (congrArg (fun x => P) e) f` |
-| `{==}` | `rfl` |
+| λ-match chain | `fun x => match x with …`; default arms expanded into the remaining constructors, known constructors resolved statically |
+| equality `{a == b : T}` | `Beq a b`, a Type-valued equality (Bend's equalities are data: they go in pairs and type families) |
+| `%e : P; f` | `Beq.J (fun x ev => P) e f`, Bend's rewrite rule exactly |
+| `{==}` | `Beq.refl` |
 | empty match | `nomatch` |
-| `Nat`, `Bool`, `List`, `Pair`, `Unit`, `Empty` | Lean's own types |
-| `Word(n)`, U32 literals | the indexed type `BWord n`, the literal's bits |
-| user datatypes | `inductive` |
+| `Nat`, `Bool`, `List`, `Unit`, `Empty` | Lean's own types |
+| `Pair`, `Sigma`, `Exists` | `Σ` |
+| `Word(n)`, U32 / F32 / String literals | the indexed type `BWord n`, the literal's bits or characters |
+| user datatypes | `inductive`; value parameters become indices; mutual types go in a `mutual` block |
 | quantities | erased |
-| cycles of definitions | broken by inlining the non-recursive members |
+| cycles of definitions | broken by inlining the non-recursive members within the cycle |
 
-Definitions it can't translate (IO, String, F32, other indexed types), and everything that uses them, are skipped and reported.
+`IO` code is effectful, not proof: it and everything that uses it are skipped and reported as effect code. Other unsupported definitions are skipped and reported as well.
+
+The bridge back to Lean's `Eq` is `Beq.toEq` / `Beq.ofEq` (see `lean/FastBridge.lean`).
 
 ## Coverage on Bend's own proof tests
 
-`scripts/corpus.sh` runs every file in Bend's `tests/proof` (`results/corpus.tsv`, Bend `0e2f38f7`, Lean 4.35):
+`scripts/corpus.sh` translates every file in Bend's `tests/proof` and scores it against the test's own expected verdict (`results/corpus.tsv`, Bend `0e2f38f7`, Lean 4.35):
 
-- 43 of 121 files translate completely and re-check in Lean, with no axioms;
-- 504 results are axiom-free;
-- the rest hit untranslated features or Lean errors in specific constructs, listed in the results file.
+| | |
+|---|---|
+| positive tests (Bend accepts) that Lean re-checks completely | **80 / 86** |
+| negative tests (Bend rejects) that Lean rejects too | **32 / 35** |
+| negative tests where Lean accepts an invalid proof | **0** |
+
+The three other negative tests are explained:
+- `PROOF` is rejected by Bend only for its `@unsafe` IO code; its proofs check in both.
+- `LAWS` is rejected only for an open law, which the translator skips.
+- `match_as_binding` does not translate.
+
+The six positive tests that fail use lexicographic termination, `Type`-valued type arguments, constructor indices Lean can't infer, non-uniform nested types, or recursion on a literal.
 
 ## Requirements
 
